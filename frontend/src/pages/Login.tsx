@@ -1,8 +1,9 @@
-﻿import React, { useState, useEffect } from 'react';
-import { Shield, Mail, Lock, Eye, EyeOff, AlertCircle, ArrowRight, Activity, CheckCircle, BarChart3, ShieldCheck, Share2 } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { authService, type AuthUser } from '../services/auth';
+import { Shield, Mail, Lock, Eye, EyeOff, AlertCircle, ArrowRight, Activity, BarChart3, ShieldCheck, Share2 } from 'lucide-react';
 
 interface LoginProps {
-  onLogin: () => void;
+  onLogin: (user: AuthUser) => void;
 }
 
 const mapRange = (value: number, inMin: number, inMax: number, outMin: number, outMax: number) => {
@@ -20,10 +21,9 @@ const PARTICLES = Array.from({ length: 150 }, (_, i) => ({
 }));
 
 export const Login: React.FC<LoginProps> = ({ onLogin }) => {
-  const [username, setUsername] = useState('operator_admin');
-  const [password, setPassword] = useState('sentinel_key_2026');
+  const [username, setUsername] = useState('');
+  const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
-  const [rememberMe, setRememberMe] = useState(true);
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   
@@ -40,18 +40,18 @@ export const Login: React.FC<LoginProps> = ({ onLogin }) => {
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
     setErrorMsg(null);
-    setTimeout(() => {
-      if (username.trim() && password.length >= 6) {
-        onLogin();
-      } else {
-        setErrorMsg('Authentication failed. Please check your credentials.');
-        setLoading(false);
-      }
-    }, 600);
+    try {
+      const user = await authService.login(username.trim(), password);
+      onLogin(user);
+    } catch (error) {
+      setErrorMsg(error instanceof Error ? error.message : 'Authentication failed. Please check your credentials.');
+    } finally {
+      setLoading(false);
+    }
   };
 
   const particlesOpacity = mapRange(scrollProgress, 0.0, 0.10, 0, 1);
@@ -330,7 +330,7 @@ export const Login: React.FC<LoginProps> = ({ onLogin }) => {
                   <label className="text-slate-300 text-xs font-semibold">Email address</label>
                   <div className="flex items-center gap-3 px-4 py-3 rounded-xl text-sm transition-all bg-[#050a14]/80 border border-slate-700/60 focus-within:border-cyan-500/60 focus-within:shadow-[0_0_15px_rgba(14,165,233,0.15)]">
                     <Mail size={16} className="text-slate-500 shrink-0" />
-                    <input type="text" value={username} onChange={e => setUsername(e.target.value)}
+                    <input type="email" autoComplete="username" value={username} onChange={e => setUsername(e.target.value)}
                       placeholder="Enter your email" required
                       className="bg-transparent border-none outline-none w-full text-white placeholder-slate-600 text-sm" />
                   </div>
@@ -340,7 +340,7 @@ export const Login: React.FC<LoginProps> = ({ onLogin }) => {
                   <label className="text-slate-300 text-xs font-semibold">Password</label>
                   <div className="flex items-center gap-3 px-4 py-3 rounded-xl text-sm transition-all bg-[#050a14]/80 border border-slate-700/60 focus-within:border-cyan-500/60 focus-within:shadow-[0_0_15px_rgba(14,165,233,0.15)]">
                     <Lock size={16} className="text-slate-500 shrink-0" />
-                    <input type={showPassword ? 'text' : 'password'} value={password}
+                    <input type={showPassword ? 'text' : 'password'} autoComplete="current-password" value={password}
                       onChange={e => setPassword(e.target.value)} placeholder="Enter your password" required
                       className="bg-transparent border-none outline-none w-full text-white placeholder-slate-600 text-sm" />
                     <button type="button" onClick={() => setShowPassword(!showPassword)}
@@ -350,17 +350,7 @@ export const Login: React.FC<LoginProps> = ({ onLogin }) => {
                   </div>
                 </div>
 
-                <div className="flex items-center justify-between text-xs pt-2">
-                  <label className="flex items-center gap-2 cursor-pointer select-none">
-                    <div onClick={() => setRememberMe(!rememberMe)}
-                         className="w-4 h-4 rounded flex items-center justify-center border transition-all cursor-pointer"
-                         style={{ background: rememberMe ? '#3b82f6' : 'transparent', borderColor: rememberMe ? '#3b82f6' : '#475569' }}>
-                      {rememberMe && <CheckCircle size={10} className="text-white" />}
-                    </div>
-                    <span className="text-slate-300 font-medium">Remember me</span>
-                  </label>
-                  <button type="button" className="text-blue-400 hover:text-blue-300 transition-colors font-medium">Forgot password?</button>
-                </div>
+                <p className="text-slate-500 text-xs pt-2">Need an account or password reset? Contact your IoT Shield administrator.</p>
 
                 <button type="submit" disabled={loading}
                   className="w-full mt-4 flex items-center justify-center gap-2 py-3.5 rounded-xl text-white font-bold text-sm transition-all overflow-hidden relative group"
@@ -373,24 +363,6 @@ export const Login: React.FC<LoginProps> = ({ onLogin }) => {
                   )}
                 </button>
               </form>
-
-              <div className="flex items-center gap-3 my-6 relative z-10">
-                <div className="flex-1 h-px bg-slate-700/50" />
-                <span className="text-slate-500 text-[11px]">or continue with</span>
-                <div className="flex-1 h-px bg-slate-700/50" />
-              </div>
-
-              <div className="flex gap-4 relative z-10">
-                {[
-                  <svg key="g" width="18" height="18" viewBox="0 0 24 24"><path fill="#EA4335" d="M5.26 9.77A7.2 7.2 0 0 1 12 4.8c1.73 0 3.27.62 4.5 1.62l3.35-3.35A12 12 0 0 0 0 12c0 1.99.49 3.87 1.35 5.52l4.05-3.14A7.2 7.2 0 0 1 4.8 12c0-.78.16-1.53.46-2.23z"/><path fill="#FBBC05" d="M1.35 17.52A12 12 0 0 0 12 24c3.12 0 5.95-1.13 8.12-2.97l-3.96-3.08A7.2 7.2 0 0 1 4.8 12c0-.78.16-1.53.46-2.23L1.21 6.63A11.97 11.97 0 0 0 0 12c0 1.99.49 3.87 1.35 5.52z"/><path fill="#4285F4" d="M23.76 12.27c0-.87-.08-1.72-.22-2.54H12v4.82h6.6a5.65 5.65 0 0 1-2.44 3.7l3.96 3.08C22.24 19.44 23.76 16.07 23.76 12.27z"/><path fill="#34A853" d="M12 24a12 12 0 0 0 8.12-2.97l-3.96-3.08A7.2 7.2 0 0 1 4.8 12H1.35A12 12 0 0 0 12 24z"/></svg>,
-                  <svg key="gh" width="18" height="18" viewBox="0 0 24 24" fill="white"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.3 3.44 9.8 8.2 11.38.6.1.82-.26.82-.58v-2.04c-3.34.72-4.04-1.61-4.04-1.61-.54-1.38-1.33-1.75-1.33-1.75-1.09-.74.08-.73.08-.73 1.2.09 1.84 1.24 1.84 1.24 1.07 1.83 2.8 1.3 3.49 1 .1-.78.42-1.31.76-1.61-2.66-.3-5.46-1.33-5.46-5.93 0-1.31.47-2.38 1.24-3.22-.13-.3-.54-1.52.12-3.17 0 0 1.01-.32 3.3 1.23a11.5 11.5 0 0 1 3-.4c1.02 0 2.04.14 3 .4 2.28-1.55 3.29-1.23 3.29-1.23.66 1.65.24 2.87.12 3.17.77.84 1.23 1.91 1.23 3.22 0 4.61-2.8 5.63-5.48 5.92.43.37.81 1.1.81 2.22v3.29c0 .32.22.69.83.57C20.57 21.8 24 17.3 24 12 24 5.37 18.63 0 12 0z"/></svg>,
-                  <svg key="ms" width="18" height="18" viewBox="0 0 24 24"><path fill="#F25022" d="M0 0h11.5v11.5H0z"/><path fill="#7FBA00" d="M12.5 0H24v11.5H12.5z"/><path fill="#00A4EF" d="M0 12.5h11.5V24H0z"/><path fill="#FFB900" d="M12.5 12.5H24V24H12.5z"/></svg>,
-                ].map((icon, i) => (
-                  <button key={i} className="flex-1 flex items-center justify-center py-2.5 rounded-xl bg-[#050a14]/80 border border-slate-700/60 transition-all hover:bg-slate-800">
-                    {icon}
-                  </button>
-                ))}
-              </div>
 
               <p className="text-center text-slate-500 text-[10px] mt-6 flex items-center justify-center gap-1.5 relative z-10">
                 <Lock size={10} /> Your data is encrypted and secure

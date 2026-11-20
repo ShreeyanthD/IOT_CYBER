@@ -16,7 +16,21 @@ class Settings(BaseSettings):
     REPORTS_DIR: str = os.path.join(BASE_DIR, "reports")
     STORAGE_REPORTS_DIR: str = os.path.join(BASE_DIR, "storage", "reports")
     SETTINGS_FILE: str = os.path.join(BASE_DIR, "platform_settings.json")
-    DATABASE_URL: str = f"sqlite:///{os.path.join(BASE_DIR, 'iot_sentinel.db')}"
+    DATABASE_URL: str = os.environ.get("DATABASE_URL", f"sqlite:///{os.path.join(BASE_DIR, 'iot_sentinel.db')}")
+
+    # Authentication
+    AUTH_SECRET_KEY: str = os.environ.get("AUTH_SECRET_KEY", "")
+    AUTH_ACCESS_TOKEN_MINUTES: int = int(os.environ.get("AUTH_ACCESS_TOKEN_MINUTES", "15"))
+    AUTH_REFRESH_TOKEN_HOURS: int = int(os.environ.get("AUTH_REFRESH_TOKEN_HOURS", "8"))
+    AUTH_COOKIE_SECURE: bool = os.environ.get("AUTH_COOKIE_SECURE", "false").lower() == "true"
+    AUTH_COOKIE_SAMESITE: str = os.environ.get("AUTH_COOKIE_SAMESITE", "lax")
+    AUTH_ALLOWED_ORIGINS: str = os.environ.get(
+        "AUTH_ALLOWED_ORIGINS", "http://localhost:5173,http://127.0.0.1:5173"
+    )
+
+    @property
+    def allowed_auth_origins(self) -> list[str]:
+        return [origin.strip() for origin in self.AUTH_ALLOWED_ORIGINS.split(",") if origin.strip()]
 
     # MongoDB Persistent Storage
     MONGODB_URI: str = os.environ.get("MONGODB_URI", "mongodb://localhost:27017")

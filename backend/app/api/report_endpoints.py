@@ -88,7 +88,10 @@ def get_stored_report_detail(report_id: str):
     return doc
 
 @router.get("/{report_id}/download")
-def download_stored_report_file(report_id: str, format: Optional[str] = Query("md", enum=["md", "json"])):
+def download_stored_report_file(
+    report_id: str,
+    format: str = Query("md", pattern="^(md|json)$")
+):
     """
     Downloads the actual report file (.md or .json) stored in backend/storage/reports/.
     Validates file paths and prevents path traversal attacks.

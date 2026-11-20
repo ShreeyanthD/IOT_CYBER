@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import {
   LayoutDashboard,
   Database,
@@ -8,6 +8,11 @@ import {
   ShieldAlert,
   Sparkles,
   FileText,
+  UserPlus,
+  Sun,
+  Moon,
+  LogOut,
+  type LucideIcon,
 } from 'lucide-react';
 import { SystemStatus, Dataset, MLModel } from '../types';
 
@@ -22,6 +27,7 @@ export const PAGE_ORDER = [
   'performance',    // 05
   'explainability', // 06
   'settings',       // 07
+  'users',          // 08 (admin only)
 ];
 
 /* ─── PAGE META ─── */
@@ -33,10 +39,11 @@ const PAGE_META: Record<string, { title: string; desc: string; idx: string }> = 
   performance:    { title: 'Model Performance & Metrics',       desc: 'Finalized 8-class XGBoost model metrics, evaluations, and confusion matrix.', idx: '05' },
   explainability: { title: 'AI Explainability Deep Dive',      desc: 'SHAP-based explanations and attack analysis for evaluated network telemetry.', idx: '06' },
   settings:       { title: 'Platform Settings & Session',      desc: 'System configurations, hardware adapters, and session management.',           idx: '07' },
+  users:          { title: 'User Management',                            desc: 'Register team members and assign IoT Shield access roles.',                      idx: '08' },
 };
 
 /* ─── NAV ITEMS ─── */
-const NAV_ITEMS = [
+const NAV_ITEMS: { id: string; label: string; icon: LucideIcon; adminOnly?: boolean }[] = [
   { id: 'dashboard',     label: 'Dashboard',          icon: LayoutDashboard },
   { id: 'incidents',     label: 'SOC Incidents',      icon: ShieldAlert },
   { id: 'reports',       label: 'Report History',     icon: FileText },
@@ -44,6 +51,7 @@ const NAV_ITEMS = [
   { id: 'performance',   label: 'Model Performance',  icon: Activity },
   { id: 'explainability',label: 'AI Explainability',  icon: Sparkles },
   { id: 'settings',      label: 'Settings',           icon: SettingsIcon },
+  { id: 'users',         label: 'Register Users',     icon: UserPlus, adminOnly: true },
 ];
 
 /* ─── AMBIENT PARTICLES (memoised) ─── */
@@ -64,6 +72,10 @@ interface LayoutProps {
   systemStatus: SystemStatus | null;
   selectedDataset: Dataset | null;
   selectedModel: MLModel | null;
+  showUserManagement?: boolean;
+  onLogout?: () => void | Promise<void>;
+  userEmail?: string;
+  userRole?: string;
   children: React.ReactNode;
 }
 
@@ -71,10 +83,29 @@ export const Layout: React.FC<LayoutProps> = ({
   activePage,
   setActivePage,
   systemStatus,
-  selectedDataset,
-  selectedModel,
+  showUserManagement = false,
+  onLogout,
+  userEmail = '',
+  userRole = 'analyst',
   children,
 }) => {
+  const [theme, setTheme] = useState<'dark' | 'light'>(() => {
+    try {
+      return localStorage.getItem('iotshield_theme') === 'light' ? 'light' : 'dark';
+    } catch {
+      return 'dark';
+    }
+  });
+
+  useEffect(() => {
+    try {
+      localStorage.setItem('iotshield_theme', theme);
+    } catch {
+      // Theme preference is optional; the app still works if storage is unavailable.
+    }
+  }, [theme]);
+
+  const userInitials = (userEmail.split('@')[0] || 'User').slice(0, 2).toUpperCase();
 
   /* ── Computed values ── */
   const meta = PAGE_META[activePage] ?? PAGE_META['dashboard'];
@@ -105,20 +136,24 @@ export const Layout: React.FC<LayoutProps> = ({
   ];
 
   return (
-    <div className="flex h-screen overflow-hidden bg-[#01030a]">
+    <div
+      className="iot-app-shell flex h-screen overflow-hidden"
+      data-theme={theme}
+      style={{ background: 'var(--iot-app-bg)', color: 'var(--iot-app-text)' }}
+    >
 
       {/* ════════ SIDEBAR ════════ */}
       <aside
         className="flex flex-col w-56 shrink-0 z-30"
         style={{
-          background: 'rgba(2, 5, 16, 0.97)',
-          borderRight: '1px solid rgba(6, 182, 212, 0.09)',
+          background: theme === 'dark' ? 'rgba(2, 5, 16, 0.97)' : '#ffffff',
+          borderRight: theme === 'dark' ? '1px solid rgba(6, 182, 212, 0.09)' : '1px solid #e2e8f0',
           backdropFilter: 'blur(20px)',
-          boxShadow: '4px 0 30px rgba(6,182,212,0.04)',
+          boxShadow: theme === 'dark' ? '4px 0 30px rgba(6,182,212,0.04)' : '4px 0 24px rgba(15,23,42,0.05)',
         }}
       >
         {/* Brand */}
-        <div className="flex items-center gap-3 px-4 py-4" style={{ borderBottom:'1px solid rgba(6,182,212,0.08)' }}>
+        <div className="flex items-center gap-3 px-4 py-4" style={{ borderBottom: theme === 'dark' ? '1px solid rgba(6,182,212,0.08)' : '1px solid #e2e8f0' }}>
           <div
             className="relative w-8 h-8 flex items-center justify-center rounded-xl"
             style={{ background:'rgba(6,182,212,0.08)', border:'1px solid rgba(6,182,212,0.25)', boxShadow:'0 0 12px rgba(6,182,212,0.12)' }}
@@ -134,7 +169,7 @@ export const Layout: React.FC<LayoutProps> = ({
 
         {/* Nav */}
         <nav className="flex-1 px-2.5 py-4 space-y-0.5 overflow-y-auto">
-          {NAV_ITEMS.map(({ id, label, icon: Icon }) => {
+          {NAV_ITEMS.filter(item => !item.adminOnly || showUserManagement).map(({ id, label, icon: Icon }) => {
             const isActive = activePage === id;
             return (
               <button
@@ -153,7 +188,7 @@ export const Layout: React.FC<LayoutProps> = ({
         </nav>
 
         {/* Status */}
-        <div className="p-4 space-y-2" style={{ borderTop:'1px solid rgba(6,182,212,0.08)' }}>
+        <div className="p-4 space-y-2" style={{ borderTop: theme === 'dark' ? '1px solid rgba(6,182,212,0.08)' : '1px solid #e2e8f0' }}>
           {statuses.map(({ label, ok, txt }) => (
             <div key={label} className="flex justify-between items-center">
               <span className="text-[9px] font-mono text-slate-700 tracking-widest">{label}</span>
@@ -174,50 +209,70 @@ export const Layout: React.FC<LayoutProps> = ({
         {/* Header */}
         <header
           className="flex justify-between items-center h-12 px-5 shrink-0 z-20"
-          style={{ background:'rgba(1,4,14,0.93)', borderBottom:'1px solid rgba(6,182,212,0.09)', backdropFilter:'blur(16px)' }}
+          style={{ background: theme === 'dark' ? 'rgba(1,4,14,0.93)' : 'rgba(255,255,255,0.94)', borderBottom: theme === 'dark' ? '1px solid rgba(6,182,212,0.09)' : '1px solid #e2e8f0', backdropFilter:'blur(16px)' }}
         >
           <div className="flex items-center gap-3">
             <div className="w-px h-7" style={{ background:'linear-gradient(to bottom,transparent,#06b6d4,transparent)' }} />
             <div>
               <div className="flex items-center gap-2">
                 <h2 className="text-[13px] font-semibold text-white tracking-wide">{meta.title}</h2>
-                <span className="section-crumb hidden md:inline">{meta.idx} / 05</span>
+                <span className="section-crumb hidden md:inline">{meta.idx} / 08</span>
               </div>
               <p className="text-[10px] text-slate-600 mt-0.5 hidden md:block">{meta.desc}</p>
             </div>
           </div>
 
-          <div className="flex items-center gap-2.5">
+          <div className="flex items-center gap-2 sm:gap-3">
+            <button
+              type="button"
+              onClick={() => setTheme(current => current === 'dark' ? 'light' : 'dark')}
+              aria-label={`Switch to ${theme === 'dark' ? 'light' : 'dark'} theme`}
+              title={`Switch to ${theme === 'dark' ? 'light' : 'dark'} theme`}
+              className="inline-flex items-center gap-2 rounded-lg border px-3 py-2 text-xs font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-500"
+              style={{
+                color: theme === 'dark' ? '#cbd5e1' : '#334155',
+                background: theme === 'dark' ? 'rgba(6,182,212,0.06)' : '#f8fafc',
+                borderColor: theme === 'dark' ? 'rgba(6,182,212,0.18)' : '#cbd5e1',
+              }}
+            >
+              {theme === 'dark' ? <Sun size={15} /> : <Moon size={15} />}
+              <span className="hidden sm:inline">{theme === 'dark' ? 'Light mode' : 'Dark mode'}</span>
+            </button>
 
-            <div className="hidden md:flex items-center gap-1.5 px-3 py-1 rounded-lg text-[10px]"
-              style={{ background:'rgba(6,182,212,0.03)', border:'1px solid rgba(6,182,212,0.09)' }}>
-              <span className="text-slate-600 font-mono uppercase text-[8px]">Model:</span>
-              <span className="text-slate-300">{selectedModel?.algorithm ?? 'None'}</span>
-            </div>
-
-            <div className="hidden md:flex items-center gap-1.5 px-3 py-1 rounded-lg text-[10px]"
-              style={{ background:'rgba(6,182,212,0.03)', border:'1px solid rgba(6,182,212,0.09)' }}>
-              <span className="text-slate-600 font-mono uppercase text-[8px]">Dataset:</span>
-              <span className="text-slate-300 truncate max-w-[90px]">{selectedDataset?.name ?? 'None'}</span>
-            </div>
-
-            <div className="flex items-center gap-2 ml-1 pl-3" style={{ borderLeft:'1px solid rgba(30,41,59,0.5)' }}>
-              <div className="w-7 h-7 rounded-full flex items-center justify-center text-white font-bold text-[10px]"
-                style={{ background:'linear-gradient(135deg,#0e7490,#1d4ed8)', border:'1px solid rgba(6,182,212,0.3)', boxShadow:'0 0 10px rgba(6,182,212,0.12)' }}>
-                OP
+            <div className="flex items-center gap-2 border-l pl-3" style={{ borderColor: theme === 'dark' ? 'rgba(30,41,59,0.7)' : '#e2e8f0' }}>
+              <div
+                className="w-8 h-8 rounded-full flex items-center justify-center text-white font-bold text-[10px]"
+                style={{ background:'linear-gradient(135deg,#0e7490,#1d4ed8)', border:'1px solid rgba(6,182,212,0.3)' }}
+                aria-hidden="true"
+              >
+                {userInitials}
               </div>
-              <div className="hidden md:block">
-                <p className="text-[11px] font-semibold text-slate-300 leading-none">Operator</p>
-                <p className="text-[9px] text-slate-700 font-mono mt-0.5">Analyst</p>
+              <div className="hidden md:block min-w-0">
+                <p className="text-[11px] font-semibold leading-none truncate" style={{ color: theme === 'dark' ? '#e2e8f0' : '#0f172a' }}>{userEmail || 'Signed in'}</p>
+                <p className="text-[9px] font-mono mt-1 capitalize" style={{ color: theme === 'dark' ? '#64748b' : '#64748b' }}>{userRole}</p>
               </div>
             </div>
+
+            <button
+              type="button"
+              onClick={() => { void onLogout?.(); }}
+              className="inline-flex items-center gap-2 rounded-lg border px-3 py-2 text-xs font-medium transition-colors hover:border-rose-400 hover:text-rose-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rose-500"
+              style={{
+                color: theme === 'dark' ? '#cbd5e1' : '#334155',
+                background: theme === 'dark' ? 'rgba(15,23,42,0.55)' : '#ffffff',
+                borderColor: theme === 'dark' ? 'rgba(51,65,85,0.8)' : '#cbd5e1',
+              }}
+            >
+              <LogOut size={14} />
+              <span className="hidden sm:inline">Logout</span>
+            </button>
           </div>
         </header>
 
         {/* ════ MAIN CONTENT VIEWPORT ════ */}
         <main
           className="flex-1 overflow-hidden relative"
-          style={{ background:'#01030a' }}
+          style={{ background: 'var(--iot-app-bg)' }}
         >
           {/* Ambient environment layer */}
           <div className="absolute inset-0 pointer-events-none z-0 overflow-hidden">

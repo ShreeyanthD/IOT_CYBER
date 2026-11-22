@@ -8,6 +8,7 @@ import { Login } from './pages/Login';
 import { AIExplainability } from './pages/Explainability';
 import { Incidents } from './pages/Incidents';
 import { ReportHistory } from './pages/ReportHistory';
+import { UsersPage } from './pages/Users';
 import { Dataset, MLModel, SystemStatus, DashboardAnalytics, PredictionExplanation, IncidentState, CaptureProcessResult } from './types';
 import { apiService } from './services/api';
 import { authService, type AuthUser } from './services/auth';
@@ -275,12 +276,15 @@ function App() {
 
   return (
     <Layout
-     activePage={activePage}
-    setActivePage={setActivePage}
-    systemStatus={systemStatus}
-    selectedDataset={selectedDataset}
-    selectedModel={selectedModel}
-    onLogout={handleLogout}
+      activePage={activePage}
+      setActivePage={setActivePage}
+      systemStatus={systemStatus}
+      selectedDataset={selectedDataset}
+      selectedModel={selectedModel}
+      showUserManagement={currentUser?.role === 'admin'}
+      userEmail={currentUser?.email}
+      userRole={currentUser?.role}
+      onLogout={handleLogout}
     >
       {activePage === 'dashboard' && (
         <Dashboard
@@ -344,6 +348,10 @@ function App() {
           systemStatus={systemStatus}
           onLogout={handleLogout}
         />
+      )}
+
+      {activePage === 'users' && currentUser?.role === 'admin' && (
+        <UsersPage currentUser={currentUser} />
       )}
     </Layout>
   );

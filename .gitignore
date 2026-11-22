@@ -8,3 +8,4 @@ dist/
 build/
 backend/uploads/*.pcap
 backend/uploads/*.pcapng
+backend/storage/reports/REP-*

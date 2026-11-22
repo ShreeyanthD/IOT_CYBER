@@ -207,7 +207,11 @@ def change_password(
 
 
 @router.post("/register", response_model=UserResponse, status_code=status.HTTP_201_CREATED)
-def register(payload: RegisterRequest, db: Session = Depends(get_db)):
+def register(
+    payload: RegisterRequest,
+    db: Session = Depends(get_db),
+    admin: User = Depends(require_roles("admin")),
+):
     email = payload.email.strip().lower()
     name = payload.name.strip()
     if not name:

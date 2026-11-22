@@ -194,11 +194,10 @@ export const Register: React.FC<RegisterProps> = ({ onLogin, onNavigateToLogin }
           </div>
 
           <div
-            className="absolute w-[500px] h-[500px] rounded-full border border-cyan-400/20"
+            className="absolute w-[500px] h-[500px] rounded-full border border-cyan-400/20 border-dashed"
             style={{
               opacity: ringsOpacity,
               transform: `scale(${ringsScale}) rotate(${rotation * 0.4}deg)`,
-              borderDasharray: '10 15',
             }}
           />
           <div

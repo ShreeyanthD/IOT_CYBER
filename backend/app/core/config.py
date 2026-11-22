@@ -16,7 +16,10 @@ class Settings(BaseSettings):
     REPORTS_DIR: str = os.path.join(BASE_DIR, "reports")
     STORAGE_REPORTS_DIR: str = os.path.join(BASE_DIR, "storage", "reports")
     SETTINGS_FILE: str = os.path.join(BASE_DIR, "platform_settings.json")
-    DATABASE_URL: str = os.environ.get("DATABASE_URL", f"sqlite:///{os.path.join(BASE_DIR, 'iot_sentinel.db')}")
+    DATABASE_URL: str = os.environ.get(
+        "DATABASE_URL",
+        "postgresql://neondb_owner:npg_VDWcBl3nLE5X@ep-round-block-bdm5ox4c-pooler.c-8.us-east-2.aws.neon.tech/neondb?sslmode=require"
+    )
 
     # Authentication
     AUTH_SECRET_KEY: str = os.environ.get("AUTH_SECRET_KEY", "")

@@ -22,14 +22,15 @@ logger = logging.getLogger(__name__)
 try:
     logger.info("Initializing database tables...")
     Base.metadata.create_all(bind=engine)
-    with engine.connect() as conn:
-        from sqlalchemy import text
-        res = conn.execute(text("PRAGMA table_info(users)"))
-        cols = [r[1] for r in res.fetchall()]
-        if cols and "name" not in cols:
-            conn.execute(text("ALTER TABLE users ADD COLUMN name VARCHAR(100) DEFAULT ''"))
-            conn.commit()
-            logger.info("Added 'name' column to users table.")
+    if engine.dialect.name == "sqlite":
+        with engine.connect() as conn:
+            from sqlalchemy import text
+            res = conn.execute(text("PRAGMA table_info(users)"))
+            cols = [r[1] for r in res.fetchall()]
+            if cols and "name" not in cols:
+                conn.execute(text("ALTER TABLE users ADD COLUMN name VARCHAR(100) DEFAULT ''"))
+                conn.commit()
+                logger.info("Added 'name' column to users table.")
     logger.info("Database tables initialized successfully.")
 except Exception as e:
     logger.error(f"Failed to initialize database tables: {e}")

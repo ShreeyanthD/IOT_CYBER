@@ -56,3 +56,32 @@ Nothing else changed. The `.csv` / `.pcap` / `.pcapng` extension checks still ru
 **Verified**
 - Both files compile (`python -m py_compile`).
 - Not yet tested against a running backend. Expected: normal uploads still save to `backend/uploads/` as `<timestamp>_<name>`, and a crafted name like `a/../../evil.pcap` is saved inside `backend/uploads/` as `<timestamp>_evil.pcap`.
+
+---
+
+## 3. Make allowed CORS origins configurable instead of `*`
+
+**Problem**
+`backend/app/main.py` allowed every origin while also allowing credentials:
+
+```python
+allow_origins=["*"],
+allow_credentials=True,
+```
+
+That's fine on localhost. Once the API is public, though, any website a user visits can call it from their browser. There was also no way to name the deployed frontend's address without editing code.
+
+**Change**
+- `backend/app/main.py`: allowed origins are now read from the `CORS_ORIGINS` environment variable, a comma-separated list. If it isn't set, it defaults to the local Vite dev server (`http://localhost:5173,http://127.0.0.1:5173`), so local development works with no setup. Also added the `import os` it needs.
+- `backend/.env.example`: added `CORS_ORIGINS` with an example value.
+
+In production, set it to the deployed frontend, e.g. `CORS_ORIGINS=https://your-frontend.vercel.app`.
+
+Local dev through `npm run dev` is unaffected either way: Vite proxies `/api` to the backend, so the browser sees same-origin requests.
+
+**Verified**
+- `main.py` compiles.
+- Same middleware config tested with FastAPI's TestClient:
+  - `Origin: http://localhost:5173` is allowed.
+  - `Origin: https://evil.com` gets no `Access-Control-Allow-Origin` header, so the browser blocks it.
+  - With `CORS_ORIGINS=https://app.vercel.app`, that origin is allowed.

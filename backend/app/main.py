@@ -1,4 +1,5 @@
 import logging
+import os
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from app.core.config import settings
@@ -32,10 +33,17 @@ app = FastAPI(
 )
 
 # Set up CORS middleware
-# In production, specify specific domains, but allow all for localhost development
+# Allowed frontend origins come from the CORS_ORIGINS env var (comma-separated).
+# Defaults to the local Vite dev server. In production set it to the deployed frontend URL.
+CORS_ORIGINS = [
+    o.strip()
+    for o in os.getenv("CORS_ORIGINS", "http://localhost:5173,http://127.0.0.1:5173").split(",")
+    if o.strip()
+]
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=CORS_ORIGINS,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

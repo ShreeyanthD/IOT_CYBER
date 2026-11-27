@@ -67,6 +67,7 @@ class LLMClient:
     Provider-agnostic LLM Client abstraction supporting:
     - Gemini (Google AI Studio REST API)
     - OpenAI (Chat Completions REST API)
+    - Groq (OpenAI-compatible Chat Completions REST API)
     - Ollama (Local REST API)
     - Anthropic (Messages REST API)
     Includes:
@@ -97,6 +98,7 @@ class LLMClient:
         mapping = {
             "gemini": "gemini-2.5-flash",
             "openai": "gpt-4o-mini",
+            "groq": "llama-3.3-70b-versatile",
             "ollama": "llama3.2",
             "anthropic": "claude-3-5-haiku-20241022"
         }
@@ -107,6 +109,8 @@ class LLMClient:
             return os.environ.get("GEMINI_API_KEY", "").strip()
         elif self.provider == "openai":
             return os.environ.get("OPENAI_API_KEY", "").strip()
+        elif self.provider == "groq":
+            return os.environ.get("GROQ_API_KEY", "").strip()
         elif self.provider == "anthropic":
             return os.environ.get("ANTHROPIC_API_KEY", "").strip()
         elif self.provider == "ollama":
@@ -315,6 +319,14 @@ class LLMClient:
             return self._call_gemini(system, prompt, **opts)
         elif self.provider == "openai":
             return self._call_openai(system, prompt, **opts)
+        elif self.provider == "groq":
+            return self._call_openai(
+                system, prompt,
+                base_url="https://api.groq.com/openai/v1",
+                key_name="GROQ_API_KEY",
+                provider_label="Groq",
+                **opts,
+            )
         elif self.provider == "ollama":
             with _ollama_lock:
                 return self._call_ollama(system, prompt, **opts)
@@ -355,12 +367,21 @@ class LLMClient:
             text_parts = candidates[0].get("content", {}).get("parts", [])
             return "".join(part.get("text", "") for part in text_parts).strip()
 
-    def _call_openai(self, system: str, prompt: str, **opts) -> str:
+    def _call_openai(
+        self,
+        system: str,
+        prompt: str,
+        base_url: str = "https://api.openai.com/v1",
+        key_name: str = "OPENAI_API_KEY",
+        provider_label: str = "OpenAI",
+        **opts,
+    ) -> str:
+        """OpenAI Chat Completions call. Also used for OpenAI-compatible APIs (Groq) via base_url."""
         api_key = self._get_api_key()
         if not api_key:
-            raise ValueError("OPENAI_API_KEY environment variable not set.")
+            raise ValueError(f"{key_name} environment variable not set.")
 
-        url = "https://api.openai.com/v1/chat/completions"
+        url = f"{base_url.rstrip('/')}/chat/completions"
         headers = {
             "Authorization": f"Bearer {api_key}",
             "Content-Type": "application/json"
@@ -380,7 +401,7 @@ class LLMClient:
         with httpx.Client(timeout=self.timeout) as client:
             resp = client.post(url, headers=headers, json=payload)
             if resp.status_code != 200:
-                raise RuntimeError(f"OpenAI API returned HTTP {resp.status_code}: {resp.text}")
+                raise RuntimeError(f"{provider_label} API returned HTTP {resp.status_code}: {resp.text}")
             data = resp.json()
             return data["choices"][0]["message"]["content"].strip()
 
@@ -451,7 +472,10 @@ def get_llm_client(force_refresh: bool = False) -> LLMClient:
         from app.core.config import load_platform_settings
         cfg = load_platform_settings().get("llm", {})
         provider = os.environ.get("LLM_PROVIDER") or cfg.get("provider", "gemini")
-        model = os.environ.get("LLM_MODEL") or cfg.get("model", "")
+        # Only reuse the model from platform settings if it belongs to the same provider;
+        # otherwise (e.g. LLM_PROVIDER=groq but settings say ollama/llama3.2) use the provider default.
+        cfg_model = cfg.get("model", "") if cfg.get("provider", "gemini").lower() == provider.lower() else ""
+        model = os.environ.get("LLM_MODEL") or cfg_model
         temp = float(cfg.get("temperature", 0.2))
         enabled = bool(cfg.get("enabled", True))
         _llm_client_instance = LLMClient(

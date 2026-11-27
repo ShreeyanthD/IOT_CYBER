@@ -105,7 +105,9 @@ They make every clone ~110 MB larger and slower, which also slows down deploymen
 
 **Change**
 - `.gitignore`: added `backend/data/models/`.
-- `git rm -r --cached backend/data/models 'backend/uploads/*.pcap'`: removes them from the repository only. **The files are not deleted from disk** on any existing checkout.
+- `git rm -r --cached backend/data/models 'backend/uploads/*.pcap'`: removes them from the repository only. Nothing was deleted from disk in the checkout where this ran.
+
+> **Heads-up for existing checkouts:** when another checkout *pulls* this commit, git treats it as a deletion and **removes those files from that machine's disk**. The model cache simply re-downloads. To keep your local pcaps in `backend/uploads/`, copy them somewhere else before `git pull` and copy them back afterwards. Once back, git ignores them.
 
 **Kept on purpose** (they look like generated files, but the app needs them and does not rebuild them on its own):
 - `backend/iot_sentinel.db`: contains the 4 registered ML models (`ml_models` table) that the detection engine uses. Nothing re-seeds them at startup.
@@ -114,7 +116,7 @@ They make every clone ~110 MB larger and slower, which also slows down deploymen
 - `sample_pcaps/`: sample attack captures meant for demos.
 
 **Verified**
-- After the change, all 35 pcaps and the model cache are still present on disk.
+- After the change, all 35 pcaps and the model cache are still on disk in the checkout where the change was made.
 - On a fresh clone the embedding model is downloaded again automatically on first RAG use (this needs internet access).
 - Note: this does not shrink the existing git *history* (`.git` stays ~130 MB). It keeps the files out of new commits and makes the working tree lighter.
 

@@ -162,7 +162,7 @@ The backend defaults to Ollama, which runs on the local machine and isn't availa
 **Change** (`backend/app/llm/client.py`)
 - New provider `groq`, selected with `LLM_PROVIDER=groq`, key read from `GROQ_API_KEY`.
 - `_call_openai()` now takes optional `base_url`, `key_name` and `provider_label` arguments. The defaults are OpenAI's values, so existing `openai` behaviour is unchanged. The `groq` provider calls it with `base_url="https://api.groq.com/openai/v1"`, so no request code is duplicated.
-- Default Groq model: `llama-3.3-70b-versatile`. Override it with `LLM_MODEL`.
+- Default Groq model: `openai/gpt-oss-120b`. Override it with `LLM_MODEL`. (`llama-3.3-70b-versatile` was tried first, but Groq now limits it to Enterprise accounts and free keys get `model_not_found`.)
 - Related fix in `get_llm_client()`: if `LLM_MODEL` wasn't set, the model name was always taken from `platform_settings.json`, even when that file is configured for a different provider. With the committed settings (`provider: ollama`, `model: llama3.2`), setting `LLM_PROVIDER=groq` (or `gemini`/`openai`) would send the Ollama model name `llama3.2` to that provider. Now the settings-file model is used only when its provider matches; otherwise the provider's default model is used.
 
 - Related fix in `LLMClient.__init__`: an empty `LLM_MODEL=` line in `.env` set the model to `""`, because `os.environ.get("LLM_MODEL", default)` returns the empty string rather than the default. The provider then rejected it (Groq: `HTTP 404 model_not_found: The model `` does not exist`). An empty or blank `LLM_MODEL` now falls back to the provider's default model.
@@ -173,12 +173,13 @@ The backend defaults to Ollama, which runs on the local machine and isn't availa
 ```
 LLM_PROVIDER=groq
 GROQ_API_KEY=gsk_...        # free key from https://console.groq.com
-# LLM_MODEL=                # optional, defaults to llama-3.3-70b-versatile
+# LLM_MODEL=                # optional, defaults to openai/gpt-oss-120b
 ```
 
 **Verified** (HTTP call mocked, no real key):
-- `LLM_PROVIDER=groq`, no `LLM_MODEL`: the client reports `groq / llama-3.3-70b-versatile` and is available.
+- `LLM_PROVIDER=groq`, no `LLM_MODEL`: the client reports `groq / openai/gpt-oss-120b` and is available.
 - A request goes to `https://api.groq.com/openai/v1/chat/completions` with `Bearer <GROQ_API_KEY>`. JSON mode (`response_format: json_object`) is passed through.
 - The `openai` provider still calls `https://api.openai.com/v1/chat/completions` with `gpt-4o-mini`.
 - Missing key raises `GROQ_API_KEY environment variable not set.`
-- `LLM_MODEL=` (empty) gives `llama-3.3-70b-versatile`. `LLM_MODEL=custom-x` gives `custom-x`.
+- `LLM_MODEL=` (empty) gives `openai/gpt-oss-120b`. `LLM_MODEL=custom-x` gives `custom-x`.
+- Tested with a real free Groq key on the running backend: `GET /api/llm/health` returns `{"provider":"groq","model":"openai/gpt-oss-120b","status":"ok"}`.

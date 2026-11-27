@@ -99,7 +99,7 @@ class LLMClient:
         mapping = {
             "gemini": "gemini-2.5-flash",
             "openai": "gpt-4o-mini",
-            "groq": "llama-3.3-70b-versatile",
+            "groq": "openai/gpt-oss-120b",
             "ollama": "llama3.2",
             "anthropic": "claude-3-5-haiku-20241022"
         }

@@ -87,6 +87,7 @@ Local dev through `npm run dev` is unaffected either way: Vite proxies `/api` to
   - `Origin: http://localhost:5173` is allowed.
   - `Origin: https://evil.com` gets no `Access-Control-Allow-Origin` header, so the browser blocks it.
   - With `CORS_ORIGINS=https://app.vercel.app`, that origin is allowed.
+- Tested on the running backend (Windows): `curl -i -H "Origin: http://localhost:5173" http://127.0.0.1:8000/` returns `access-control-allow-origin: http://localhost:5173`, and `Origin: https://evil.com` gets no such header. The frontend (`npm run dev`) loads all pages normally.
 
 ---
 

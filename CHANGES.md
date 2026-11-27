@@ -55,7 +55,9 @@ Nothing else changed. The `.csv` / `.pcap` / `.pcapng` extension checks still ru
 
 **Verified**
 - Both files compile (`python -m py_compile`).
-- Not yet tested against a running backend. Expected: normal uploads still save to `backend/uploads/` as `<timestamp>_<name>`, and a crafted name like `a/../../evil.pcap` is saved inside `backend/uploads/` as `<timestamp>_evil.pcap`.
+- Tested on a running backend (Windows):
+  - A normal upload of `sample_pcaps/ddos_syn_flood.pcap` returned 201 and was saved as `backend/uploads/upload_<timestamp>_ddos_syn_flood.pcap`.
+  - `curl -F "file=@sample_pcaps/ddos_syn_flood.pcap;filename=a/../../evil.pcap" .../api/capture/upload` was saved inside `backend/uploads/` as `upload_<timestamp>_evil.pcap`. Nothing was written outside the folder.
 
 ---
 

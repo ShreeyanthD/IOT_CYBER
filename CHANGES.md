@@ -114,3 +114,37 @@ They make every clone ~110 MB larger and slower, which also slows down deploymen
 - After the change, all 35 pcaps and the model cache are still present on disk.
 - On a fresh clone the embedding model is downloaded again automatically on first RAG use (this needs internet access).
 - Note: this does not shrink the existing git *history* (`.git` stays ~130 MB). It keeps the files out of new commits and makes the working tree lighter.
+
+---
+
+## 5. Fix backend crash on startup with current FastAPI (`Query(enum=...)`)
+
+**Problem**
+On a fresh install the backend fails to start:
+
+```
+File "backend/app/api/report_endpoints.py", line 91
+    def download_stored_report_file(report_id: str, format: Optional[str] = Query("md", enum=["md", "json"])):
+TypeError: Query() got an unexpected keyword argument 'enum'
+```
+
+`requirements.txt` pins only `fastapi>=0.100.0`, so a fresh install gets the newest release (0.165.0 at the time of writing). Older FastAPI versions accepted unknown keyword arguments in `Query()` and put them in the OpenAPI schema. Newer versions reject them, so `enum=` crashes the whole app at import time. Any new environment, including deployment, hits this.
+
+**Change**
+`backend/app/api/report_endpoints.py`:
+
+```python
+# before
+format: Optional[str] = Query("md", enum=["md", "json"])
+# after
+format: Literal["md", "json"] = Query("md")
+```
+
+Also added `Literal` to the `typing` import. This is the supported way to restrict a parameter to fixed values. FastAPI validates it and still shows the two choices as a dropdown in `/docs`. It was the only `enum=` use in the codebase.
+
+**Verified**
+- File compiles.
+- Same endpoint signature tested with FastAPI 0.165.0 and TestClient:
+  - no `format` gives `md`
+  - `?format=json` gives `json`
+  - `?format=exe` is rejected with HTTP 422

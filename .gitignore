@@ -8,3 +8,6 @@ dist/
 build/
 backend/uploads/*.pcap
 backend/uploads/*.pcapng
+
+# Hugging Face embedding model cache (downloaded automatically on first use)
+backend/data/models/

@@ -85,3 +85,32 @@ Local dev through `npm run dev` is unaffected either way: Vite proxies `/api` to
   - `Origin: http://localhost:5173` is allowed.
   - `Origin: https://evil.com` gets no `Access-Control-Allow-Origin` header, so the browser blocks it.
   - With `CORS_ORIGINS=https://app.vercel.app`, that origin is allowed.
+
+---
+
+## 4. Stop tracking generated / local-only files (~110 MB)
+
+**Problem**
+Two sets of files that aren't source code were committed:
+
+| Path | Size | What it is |
+|---|---|---|
+| `backend/data/models/` (30 files) | ~88 MB | Hugging Face cache of the `all-MiniLM-L6-v2` embedding model. `app/rag/embeddings.py` downloads it here automatically on first use. |
+| `backend/uploads/*.pcap` (35 files) | ~21 MB | Packet captures from local test runs. `.gitignore` already excluded these, but they were committed before that rule was added, so git kept tracking them. |
+
+They make every clone ~110 MB larger and slower, which also slows down deployment builds.
+
+**Change**
+- `.gitignore`: added `backend/data/models/`.
+- `git rm -r --cached backend/data/models 'backend/uploads/*.pcap'`: removes them from the repository only. **The files are not deleted from disk** on any existing checkout.
+
+**Kept on purpose** (they look like generated files, but the app needs them and does not rebuild them on its own):
+- `backend/iot_sentinel.db`: contains the 4 registered ML models (`ml_models` table) that the detection engine uses. Nothing re-seeds them at startup.
+- `backend/data/chroma_db/` and `backend/data/rag_cache/`: the RAG vector index and source feeds. These are only rebuilt by calling the RAG refresh endpoint by hand.
+- `backend/uploads/20260825155318_iot_ids_classification_test.csv`: referenced by the one row in the `datasets` table.
+- `sample_pcaps/`: sample attack captures meant for demos.
+
+**Verified**
+- After the change, all 35 pcaps and the model cache are still present on disk.
+- On a fresh clone the embedding model is downloaded again automatically on first RAG use (this needs internet access).
+- Note: this does not shrink the existing git *history* (`.git` stays ~130 MB). It keeps the files out of new commits and makes the working tree lighter.

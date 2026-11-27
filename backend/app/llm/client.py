@@ -87,7 +87,8 @@ class LLMClient:
         timeout: float = DEFAULT_TIMEOUT_SEC
     ):
         self.provider = (provider or os.environ.get("LLM_PROVIDER", "gemini")).lower()
-        self.model = model or os.environ.get("LLM_MODEL", self._default_model_for_provider(self.provider))
+        # An empty LLM_MODEL (e.g. "LLM_MODEL=" in .env) falls back to the provider default
+        self.model = model or os.environ.get("LLM_MODEL", "").strip() or self._default_model_for_provider(self.provider)
         self.temperature = temperature
         self.enabled = enabled
         self.timeout = timeout

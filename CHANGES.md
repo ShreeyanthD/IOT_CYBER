@@ -2,6 +2,8 @@
 
 Small, targeted fixes made before deploying. Each entry lists the problem, the exact change, and how it was verified.
 
+For how to deploy (Vercel frontend + Cloudflare tunnel backend), see [`DEPLOYMENT.md`](DEPLOYMENT.md).
+
 ---
 
 ## 1. Remove Windows-only package from frontend dependencies

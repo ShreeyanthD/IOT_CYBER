@@ -167,7 +167,8 @@ def upload_dataset(file: UploadFile = File(...), db: Session = Depends(get_db)):
         )
         
     # Generate path and save file
-    file_uuid = f"{datetime.now().strftime('%Y%m%d%H%M%S')}_{file.filename}"
+    safe_name = os.path.basename(file.filename)  # strip any directory parts to prevent path traversal
+    file_uuid = f"{datetime.now().strftime('%Y%m%d%H%M%S')}_{safe_name}"
     filepath = os.path.join(settings.UPLOAD_DIR, file_uuid)
     
     try:

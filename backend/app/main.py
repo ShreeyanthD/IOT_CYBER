@@ -1,4 +1,5 @@
 import logging
+import os
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi import Depends
@@ -54,10 +55,16 @@ async def validate_auth_configuration():
         )
 
 # Set up CORS middleware
-# Only trusted frontend origins may make credentialed requests.
+# Allowed frontend origins come from CORS_ORIGINS env var or settings.allowed_auth_origins
+CORS_ORIGINS = [
+    o.strip()
+    for o in os.getenv("CORS_ORIGINS", settings.AUTH_ALLOWED_ORIGINS).split(",")
+    if o.strip()
+]
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=settings.allowed_auth_origins,
+    allow_origins=CORS_ORIGINS,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

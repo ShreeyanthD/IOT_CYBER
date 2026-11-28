@@ -9,3 +9,6 @@ build/
 backend/uploads/*.pcap
 backend/uploads/*.pcapng
 backend/storage/reports/REP-*
+
+# Hugging Face embedding model cache (downloaded automatically on first use)
+backend/data/models/

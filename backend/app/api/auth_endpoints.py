@@ -1,5 +1,5 @@
 import secrets
-from datetime import timedelta
+from datetime import datetime, timedelta, timezone
 
 import jwt
 from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
@@ -30,6 +30,14 @@ from app.core.database import get_db
 from app.db.models import RefreshSession, User
 
 router = APIRouter(tags=["Authentication"])
+
+
+def _is_expired(dt: datetime, now: datetime) -> bool:
+    if dt.tzinfo is not None and now.tzinfo is None:
+        now = now.replace(tzinfo=timezone.utc)
+    elif dt.tzinfo is None and now.tzinfo is not None:
+        dt = dt.replace(tzinfo=timezone.utc)
+    return dt <= now
 
 
 def _cookie_options() -> dict:
@@ -126,7 +134,7 @@ def refresh(request: Request, response: Response, db: Session = Depends(get_db))
         _clear_refresh_cookie(response)
         raise HTTPException(status_code=401, detail="Refresh token reuse detected; sign in again")
 
-    if session.expires_at <= now:
+    if _is_expired(session.expires_at, now):
         session.revoked_at = now
         db.commit()
         _clear_refresh_cookie(response)

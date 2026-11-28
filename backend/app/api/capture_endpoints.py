@@ -95,7 +95,8 @@ def upload_pcap(file: UploadFile = File(...)):
             detail="Invalid file format. Only .pcap and .pcapng files are supported."
         )
 
-    file_uuid = f"upload_{datetime.now().strftime('%Y%m%d_%H%M%S')}_{file.filename}"
+    safe_name = os.path.basename(file.filename)  # strip any directory parts to prevent path traversal
+    file_uuid = f"upload_{datetime.now().strftime('%Y%m%d_%H%M%S')}_{safe_name}"
     filepath = os.path.join(settings.UPLOAD_DIR, file_uuid)
 
     try:

@@ -8,14 +8,38 @@ import { Login } from './pages/Login';
 import { AIExplainability } from './pages/Explainability';
 import { Incidents } from './pages/Incidents';
 import { ReportHistory } from './pages/ReportHistory';
+import { UsersPage } from './pages/Users';
 import { Dataset, MLModel, SystemStatus, DashboardAnalytics, PredictionExplanation, IncidentState, CaptureProcessResult } from './types';
 import { apiService } from './services/api';
+import { authService, type AuthUser } from './services/auth';
 
 function App() {
-  const [isAuthenticated, setIsAuthenticated] = useState<boolean>(() => {
-    return localStorage.getItem('iotshield_auth') === 'true';
-  });
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [isRestoringSession, setIsRestoringSession] = useState(true);
+  const [currentUser, setCurrentUser] = useState<AuthUser | null>(null);
   const [activePage, setActivePage] = useState<string>('dashboard');
+
+  useEffect(() => {
+    let active = true;
+    authService.restore().then(user => {
+      if (!active) return;
+      setCurrentUser(user);
+      setIsAuthenticated(Boolean(user));
+    }).finally(() => {
+      if (active) setIsRestoringSession(false);
+    });
+    return () => { active = false; };
+  }, []);
+
+  useEffect(() => {
+    const handleExpiredSession = () => {
+      setCurrentUser(null);
+      setIsAuthenticated(false);
+      setActivePage('dashboard');
+    };
+    window.addEventListener('iotshield:session-expired', handleExpiredSession);
+    return () => window.removeEventListener('iotshield:session-expired', handleExpiredSession);
+  }, []);
   const [systemStatus, setSystemStatus] = useState<SystemStatus | null>(null);
   const [selectedDataset, setSelectedDataset] = useState<Dataset | null>(null);
   const [selectedModel, setSelectedModel] = useState<MLModel | null>(null);
@@ -162,22 +186,22 @@ function App() {
 
   // On mount
   useEffect(() => {
+    if (!isAuthenticated) return;
     fetchStatusAndData();
     loadDashboardAnalytics();
-    loadIncidents();
-    
-    // Set a health check poll every 30 seconds
+
+    // Set a health check poll every 30 seconds while authenticated.
     const interval = setInterval(async () => {
       try {
         const status = await apiService.getSystemStatus();
         setSystemStatus(status);
-      } catch (err) {
-        // silent fail
+      } catch {
+        // The shared API client handles expired sessions.
       }
     }, 30000);
 
     return () => clearInterval(interval);
-  }, []);
+  }, [isAuthenticated]);
 
   const loadIncidents = async () => {
     try {
@@ -209,10 +233,10 @@ function App() {
 
   // Re-sync incidents and detections when switching between tabs
   useEffect(() => {
-    if (activePage === 'incidents' || activePage === 'dashboard' || activePage === 'explainability') {
+    if (isAuthenticated && (activePage === 'incidents' || activePage === 'dashboard' || activePage === 'explainability')) {
       loadIncidents();
     }
-  }, [activePage]);
+  }, [activePage, isAuthenticated]);
 
   // Sync selection defaults
   useEffect(() => {
@@ -227,18 +251,26 @@ function App() {
     await fetchStatusAndData();
   };
 
-  const handleLogout = () => {
-    localStorage.removeItem('iotshield_auth');
-    setIsAuthenticated(false);
-    setSelectedDataset(null);
-    setSelectedModel(null);
-    setActivePage('dashboard');
+  const handleLogout = async () => {
+    try {
+      await authService.logout();
+    } finally {
+      setCurrentUser(null);
+      setIsAuthenticated(false);
+      setSelectedDataset(null);
+      setSelectedModel(null);
+      setActivePage('dashboard');
+    }
   };
 
+  if (isRestoringSession) {
+    return <div className="min-h-screen flex items-center justify-center bg-[#01030a] text-cyan-300 text-sm">Restoring secure session...</div>;
+  }
+
   if (!isAuthenticated) {
-    return <Login onLogin={() => {
+    return <Login onLogin={(user) => {
+      setCurrentUser(user);
       setIsAuthenticated(true);
-      localStorage.setItem('iotshield_auth', 'true');
     }} />;
   }
 
@@ -249,6 +281,10 @@ function App() {
       systemStatus={systemStatus}
       selectedDataset={selectedDataset}
       selectedModel={selectedModel}
+      showUserManagement={currentUser?.role === 'admin'}
+      userEmail={currentUser?.email}
+      userRole={currentUser?.role}
+      onLogout={handleLogout}
     >
       {activePage === 'dashboard' && (
         <Dashboard
@@ -312,6 +348,10 @@ function App() {
           systemStatus={systemStatus}
           onLogout={handleLogout}
         />
+      )}
+
+      {activePage === 'users' && currentUser?.role === 'admin' && (
+        <UsersPage currentUser={currentUser} />
       )}
     </Layout>
   );

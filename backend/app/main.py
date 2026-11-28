@@ -2,6 +2,10 @@ import logging
 import os
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi import Depends
+from app.auth.dependencies import get_current_user, enforce_api_permissions
+from app.api.auth_endpoints import router as auth_router
+import app.db.models  # Register SQLAlchemy models before create_all
 from app.core.config import settings
 from app.core.database import engine, Base
 from app.api.endpoints import router as api_router
@@ -15,10 +19,19 @@ logging.basicConfig(
 
 logger = logging.getLogger(__name__)
 
-# Initialize SQLite database tables
+# Initialize database tables
 try:
     logger.info("Initializing database tables...")
     Base.metadata.create_all(bind=engine)
+    if engine.dialect.name == "sqlite":
+        with engine.connect() as conn:
+            from sqlalchemy import text
+            res = conn.execute(text("PRAGMA table_info(users)"))
+            cols = [r[1] for r in res.fetchall()]
+            if cols and "name" not in cols:
+                conn.execute(text("ALTER TABLE users ADD COLUMN name VARCHAR(100) DEFAULT ''"))
+                conn.commit()
+                logger.info("Added 'name' column to users table.")
     logger.info("Database tables initialized successfully.")
 except Exception as e:
     logger.error(f"Failed to initialize database tables: {e}")
@@ -32,12 +45,20 @@ app = FastAPI(
     redoc_url="/redoc"
 )
 
+
+@app.on_event("startup")
+async def validate_auth_configuration():
+    if not settings.AUTH_SECRET_KEY or len(settings.AUTH_SECRET_KEY.encode("utf-8")) < 32:
+        raise RuntimeError(
+            "Set AUTH_SECRET_KEY in the repository-root .env file to a random value "
+            "of at least 32 bytes before starting IoT Shield."
+        )
+
 # Set up CORS middleware
-# Allowed frontend origins come from the CORS_ORIGINS env var (comma-separated).
-# Defaults to the local Vite dev server. In production set it to the deployed frontend URL.
+# Allowed frontend origins come from CORS_ORIGINS env var or settings.allowed_auth_origins
 CORS_ORIGINS = [
     o.strip()
-    for o in os.getenv("CORS_ORIGINS", "http://localhost:5173,http://127.0.0.1:5173").split(",")
+    for o in os.getenv("CORS_ORIGINS", settings.AUTH_ALLOWED_ORIGINS).split(",")
     if o.strip()
 ]
 
@@ -50,7 +71,12 @@ app.add_middleware(
 )
 
 # Register routes
-app.include_router(api_router, prefix=settings.API_V1_STR)
+app.include_router(auth_router, prefix=f"{settings.API_V1_STR}/auth")
+app.include_router(
+    api_router,
+    prefix=settings.API_V1_STR,
+    dependencies=[Depends(get_current_user), Depends(enforce_api_permissions)],
+)
 
 @app.get("/")
 def read_root():

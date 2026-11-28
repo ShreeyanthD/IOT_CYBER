@@ -1,3 +1,5 @@
+import { apiFetch } from './auth';
+
 import { 
   Dataset, 
   MLModel, 
@@ -39,7 +41,7 @@ async function handleResponse<T>(response: Response): Promise<T> {
 export const apiService = {
   // System status
   async getSystemStatus(): Promise<SystemStatus> {
-    const res = await fetch(`${API_BASE_URL}/system/status`);
+    const res = await apiFetch(`${API_BASE_URL}/system/status`);
     return handleResponse<SystemStatus>(res);
   },
 
@@ -48,7 +50,7 @@ export const apiService = {
     const formData = new FormData();
     formData.append('file', file);
 
-    const res = await fetch(`${API_BASE_URL}/dataset/upload`, {
+    const res = await apiFetch(`${API_BASE_URL}/dataset/upload`, {
       method: 'POST',
       body: formData,
     });
@@ -56,22 +58,22 @@ export const apiService = {
   },
 
   async getDatasets(): Promise<Dataset[]> {
-    const res = await fetch(`${API_BASE_URL}/datasets`);
+    const res = await apiFetch(`${API_BASE_URL}/datasets`);
     return handleResponse<Dataset[]>(res);
   },
 
   async getDataset(id: number): Promise<Dataset> {
-    const res = await fetch(`${API_BASE_URL}/dataset/${id}`);
+    const res = await apiFetch(`${API_BASE_URL}/dataset/${id}`);
     return handleResponse<Dataset>(res);
   },
 
   async getDatasetPreview(id: number, limit = 15): Promise<Record<string, any>[]> {
-    const res = await fetch(`${API_BASE_URL}/dataset/${id}/preview?limit=${limit}`);
+    const res = await apiFetch(`${API_BASE_URL}/dataset/${id}/preview?limit=${limit}`);
     return handleResponse<Record<string, any>[]>(res);
   },
 
   async preprocessDataset(id: number, config: PreprocessConfig): Promise<Record<string, any>> {
-    const res = await fetch(`${API_BASE_URL}/preprocess/${id}`, {
+    const res = await apiFetch(`${API_BASE_URL}/preprocess/${id}`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -83,7 +85,7 @@ export const apiService = {
 
   // Models
   async trainModel(payload: MLModelTrainRequest): Promise<MLModel> {
-    const res = await fetch(`${API_BASE_URL}/model/train`, {
+    const res = await apiFetch(`${API_BASE_URL}/model/train`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -94,7 +96,7 @@ export const apiService = {
   },
 
   async trainAnomalyModel(datasetId: number, contamination: number): Promise<MLModel> {
-    const res = await fetch(`${API_BASE_URL}/anomaly/train`, {
+    const res = await apiFetch(`${API_BASE_URL}/anomaly/train`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -105,23 +107,23 @@ export const apiService = {
   },
 
   async getAnomalyStatus(): Promise<AnomalyEngineStatus> {
-    const res = await fetch(`${API_BASE_URL}/anomaly/status`);
+    const res = await apiFetch(`${API_BASE_URL}/anomaly/status`);
     return handleResponse<AnomalyEngineStatus>(res);
   },
 
   async getModels(): Promise<MLModel[]> {
-    const res = await fetch(`${API_BASE_URL}/models`);
+    const res = await apiFetch(`${API_BASE_URL}/models`);
     return handleResponse<MLModel[]>(res);
   },
 
   async getModel(id: number): Promise<MLModel> {
-    const res = await fetch(`${API_BASE_URL}/model/${id}`);
+    const res = await apiFetch(`${API_BASE_URL}/model/${id}`);
     return handleResponse<MLModel>(res);
   },
 
   // Detection
   async runDetection(datasetId: number, modelId: number, anomalyModelId?: number): Promise<DetectionResult> {
-    const res = await fetch(`${API_BASE_URL}/detect`, {
+    const res = await apiFetch(`${API_BASE_URL}/detect`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -144,25 +146,25 @@ export const apiService = {
     const queryString = params.toString();
     if (queryString) url += `?${queryString}`;
 
-    const res = await fetch(url);
+    const res = await apiFetch(url);
     return handleResponse<Threat[]>(res);
   },
 
   async getThreatDetails(id: number): Promise<Threat> {
-    const res = await fetch(`${API_BASE_URL}/threats/${id}`);
+    const res = await apiFetch(`${API_BASE_URL}/threats/${id}`);
     return handleResponse<Threat>(res);
   },
 
   // Reports
   async generateReport(detectionJobId: number): Promise<SecurityReport> {
-    const res = await fetch(`${API_BASE_URL}/reports/generate?detection_job_id=${detectionJobId}`, {
+    const res = await apiFetch(`${API_BASE_URL}/reports/generate?detection_job_id=${detectionJobId}`, {
       method: 'POST',
     });
     return handleResponse<SecurityReport>(res);
   },
 
   async getReports(): Promise<SecurityReport[]> {
-    const res = await fetch(`${API_BASE_URL}/reports`);
+    const res = await apiFetch(`${API_BASE_URL}/reports`);
     return handleResponse<SecurityReport[]>(res);
   },
 
@@ -172,13 +174,13 @@ export const apiService = {
 
   // Dashboard Analytics
   async getAnalytics(): Promise<DashboardAnalytics> {
-    const res = await fetch(`${API_BASE_URL}/analytics`);
+    const res = await apiFetch(`${API_BASE_URL}/analytics`);
     return handleResponse<DashboardAnalytics>(res);
   },
 
   // Delete Dataset (cascades to models, jobs, threats, reports)
   async deleteDataset(id: number): Promise<void> {
-    const res = await fetch(`${API_BASE_URL}/dataset/${id}`, { method: 'DELETE' });
+    const res = await apiFetch(`${API_BASE_URL}/dataset/${id}`, { method: 'DELETE' });
     if (!res.ok) {
       let detail = 'Failed to delete dataset';
       try { const j = await res.json(); detail = j.detail || detail; } catch {}
@@ -188,13 +190,13 @@ export const apiService = {
 
   // Explainability — per-record feature contributions
   async explainThreat(id: number): Promise<Record<string, any>> {
-    const res = await fetch(`${API_BASE_URL}/threats/${id}/explain`);
+    const res = await apiFetch(`${API_BASE_URL}/threats/${id}/explain`);
     return handleResponse<Record<string, any>>(res);
   },
 
   // Real-time SHAP Prediction Explanation
   async explainPrediction(record: Record<string, any>): Promise<PredictionExplanation> {
-    const res = await fetch(`${API_BASE_URL}/predict/explain`, {
+    const res = await apiFetch(`${API_BASE_URL}/predict/explain`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(record),
@@ -203,7 +205,7 @@ export const apiService = {
   },
 
   async predict(record: Record<string, any>): Promise<{ label: string; confidence: number; probabilities: Record<string, number> }> {
-    const res = await fetch(`${API_BASE_URL}/predict`, {
+    const res = await apiFetch(`${API_BASE_URL}/predict`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(record),
@@ -215,17 +217,17 @@ export const apiService = {
   // NETWORK PACKET CAPTURE & PCAP MANAGEMENT
   // ═══════════════════════════════════════════════════
   async getCaptureInterfaces(): Promise<NetworkInterface[]> {
-    const res = await fetch(`${API_BASE_URL}/capture/interfaces`);
+    const res = await apiFetch(`${API_BASE_URL}/capture/interfaces`);
     return handleResponse<NetworkInterface[]>(res);
   },
 
   async getCaptureStatus(): Promise<CaptureStatus> {
-    const res = await fetch(`${API_BASE_URL}/capture/status`);
+    const res = await apiFetch(`${API_BASE_URL}/capture/status`);
     return handleResponse<CaptureStatus>(res);
   },
 
   async startCapture(iface: string, durationLimit = 0, packetLimit = 0): Promise<Record<string, any>> {
-    const res = await fetch(`${API_BASE_URL}/capture/start`, {
+    const res = await apiFetch(`${API_BASE_URL}/capture/start`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -238,7 +240,7 @@ export const apiService = {
   },
 
   async stopCapture(): Promise<Record<string, any>> {
-    const res = await fetch(`${API_BASE_URL}/capture/stop`, {
+    const res = await apiFetch(`${API_BASE_URL}/capture/stop`, {
       method: 'POST',
     });
     return handleResponse<Record<string, any>>(res);
@@ -247,7 +249,7 @@ export const apiService = {
   async uploadPcap(file: File): Promise<{ filename: string; filepath: string; file_size: number }> {
     const formData = new FormData();
     formData.append('file', file);
-    const res = await fetch(`${API_BASE_URL}/capture/upload`, {
+    const res = await apiFetch(`${API_BASE_URL}/capture/upload`, {
       method: 'POST',
       body: formData,
     });
@@ -255,7 +257,7 @@ export const apiService = {
   },
 
   async processPcap(pcapPath?: string, maxFlows = 5): Promise<CaptureProcessResult> {
-    const res = await fetch(`${API_BASE_URL}/capture/process`, {
+    const res = await apiFetch(`${API_BASE_URL}/capture/process`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -270,7 +272,7 @@ export const apiService = {
   // MULTI-AGENT SOC PIPELINE
   // ═══════════════════════════════════════════════════
   async analyzeFlow(record: Record<string, any>, networkContext?: Record<string, any>): Promise<IncidentState> {
-    const res = await fetch(`${API_BASE_URL}/agents/analyze`, {
+    const res = await apiFetch(`${API_BASE_URL}/agents/analyze`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ record, network_context: networkContext }),
@@ -279,17 +281,17 @@ export const apiService = {
   },
 
   async getSocIncidents(): Promise<IncidentState[]> {
-    const res = await fetch(`${API_BASE_URL}/agents/incidents`);
+    const res = await apiFetch(`${API_BASE_URL}/agents/incidents`);
     return handleResponse<IncidentState[]>(res);
   },
 
   async getSocIncident(incidentId: string): Promise<IncidentState> {
-    const res = await fetch(`${API_BASE_URL}/agents/incident/${incidentId}`);
+    const res = await apiFetch(`${API_BASE_URL}/agents/incident/${incidentId}`);
     return handleResponse<IncidentState>(res);
   },
 
   async reviewIncidentResponse(incidentId: string, approved: boolean, analystName = "SOC Analyst", notes?: string): Promise<IncidentState> {
-    const res = await fetch(`${API_BASE_URL}/agents/incident/${incidentId}/approval`, {
+    const res = await apiFetch(`${API_BASE_URL}/agents/incident/${incidentId}/approval`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -302,7 +304,7 @@ export const apiService = {
   },
 
   async getIncidentReportMarkdown(incidentId: string): Promise<string> {
-    const res = await fetch(`${API_BASE_URL}/agents/incident/${incidentId}/report`);
+    const res = await apiFetch(`${API_BASE_URL}/agents/incident/${incidentId}/report`);
     if (!res.ok) throw new Error("Failed to fetch markdown report");
     return res.text();
   },
@@ -311,12 +313,12 @@ export const apiService = {
   // PLATFORM CONFIGURATION & SETTINGS
   // ═══════════════════════════════════════════════════
   async getPlatformSettings(): Promise<PlatformSettingsResponse> {
-    const res = await fetch(`${API_BASE_URL}/settings`);
+    const res = await apiFetch(`${API_BASE_URL}/settings`);
     return handleResponse<PlatformSettingsResponse>(res);
   },
 
   async updatePlatformSettings(settings: Partial<PlatformSettings>): Promise<PlatformSettingsResponse> {
-    const res = await fetch(`${API_BASE_URL}/settings`, {
+    const res = await apiFetch(`${API_BASE_URL}/settings`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(settings),
@@ -328,7 +330,7 @@ export const apiService = {
   // PERSISTENT REPORT STORAGE (MONGODB & FILESYSTEM)
   // ═══════════════════════════════════════════════════
   async getReportStorageStatus(): Promise<StorageStatus> {
-    const res = await fetch(`${API_BASE_URL}/reports/storage/status`);
+    const res = await apiFetch(`${API_BASE_URL}/reports/storage/status`);
     return handleResponse<StorageStatus>(res);
   },
 
@@ -338,17 +340,17 @@ export const apiService = {
     params.set('skip', skip.toString());
     if (attack) params.set('attack', attack);
     if (severity) params.set('severity', severity);
-    const res = await fetch(`${API_BASE_URL}/reports/storage?${params.toString()}`);
+    const res = await apiFetch(`${API_BASE_URL}/reports/storage?${params.toString()}`);
     return handleResponse<PersistentReport[]>(res);
   },
 
   async getStoredReport(reportId: string): Promise<PersistentReport> {
-    const res = await fetch(`${API_BASE_URL}/reports/storage/${encodeURIComponent(reportId)}`);
+    const res = await apiFetch(`${API_BASE_URL}/reports/storage/${encodeURIComponent(reportId)}`);
     return handleResponse<PersistentReport>(res);
   },
 
   async deleteStoredReport(reportId: string): Promise<{ message: string; report_id: string; deleted: boolean }> {
-    const res = await fetch(`${API_BASE_URL}/reports/storage/${encodeURIComponent(reportId)}`, {
+    const res = await apiFetch(`${API_BASE_URL}/reports/storage/${encodeURIComponent(reportId)}`, {
       method: 'DELETE',
     });
     return handleResponse<{ message: string; report_id: string; deleted: boolean }>(res);
@@ -362,19 +364,19 @@ export const apiService = {
   // RAG & LLM ENGINE ENDPOINTS
   // ═══════════════════════════════════════════════════
   async getRAGStatus(): Promise<{ status: string; stats: Record<string, any> }> {
-    const res = await fetch(`${API_BASE_URL}/rag/status`);
+    const res = await apiFetch(`${API_BASE_URL}/rag/status`);
     return handleResponse<{ status: string; stats: Record<string, any> }>(res);
   },
 
   async refreshRAGIndex(refreshOnline = false): Promise<{ status: string; results: Record<string, any> }> {
-    const res = await fetch(`${API_BASE_URL}/rag/refresh?refresh_online=${refreshOnline}`, {
+    const res = await apiFetch(`${API_BASE_URL}/rag/refresh?refresh_online=${refreshOnline}`, {
       method: 'POST'
     });
     return handleResponse<{ status: string; results: Record<string, any> }>(res);
   },
 
   async searchRAG(query: string, top_k = 5, doc_type?: string): Promise<{ query: string; count: number; results: any[] }> {
-    const res = await fetch(`${API_BASE_URL}/rag/search`, {
+    const res = await apiFetch(`${API_BASE_URL}/rag/search`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ query, top_k, doc_type })
@@ -393,7 +395,7 @@ export const apiService = {
     recent_calls: any[];
     agent_toggles: Record<string, boolean>;
   }> {
-    const res = await fetch(`${API_BASE_URL}/llm/status`);
+    const res = await apiFetch(`${API_BASE_URL}/llm/status`);
     return handleResponse<{
       enabled: boolean;
       provider: string;
